@@ -15,22 +15,26 @@ num_ts          = 10
 string_constant = 2
 dampening_coeff = 0.1
 args1           = [string_constant, dampening_coeff]
+osc_sampler     = LatinHypercubeSampler(dimensions=2, 
+                                    lows=[-1, -1], 
+                                    highs=[1, 1])
 
 # Robertson Model 
-k1    = 4e-2
-k2    = 3e7
-k3    = 1e4
-args2 = [k1, k2, k3]
+k1          = 4e-2
+k2          = 3e7
+k3          = 1e4
+args2       = [k1, k2, k3]
+Rob_sampler = DirichletSampler([1, 1, 1])
 
 
 # -------------------------------------------------------------------------------
 # Harmonic Oscillator 
 # -------------------------------------------------------------------------------
 
-def oscillator_time_boxplot(args, num_initial_con, num_ts):
+def oscillator_time_boxplot(args, sampler, num_initial_con, num_ts):
 
-    oscillator = harm_osc(args1) 
-    y0         = 2*initial_sampler(num_initial_con, 2) - 1
+    oscillator = harm_osc(args) 
+    y0         = sampler(num_initial_con)
     solver     = ODEsolver(oscillator).solve
 
     ts          = np.linspace(1.0, 100, num_ts)
@@ -62,10 +66,10 @@ def oscillator_time_boxplot(args, num_initial_con, num_ts):
 # Roberston Model 
 # -------------------------------------------------------------------------------
 
-def robertson_time_boxplot(args, num_initial_con, num_ts):
+def robertson_time_boxplot(args, sampler, num_initial_con, num_ts):
 
-    robertson = Robertson(args2)
-    y0        = np.random.dirichlet(alpha=[1, 1, 1], size=num_initial_con)
+    robertson = Robertson(args)
+    y0        = sampler(num_initial_con)
     solver    = ODEsolver(robertson).solve
 
     ts          = np.linspace(1000.0, 1e6, num_ts)
@@ -94,4 +98,6 @@ def robertson_time_boxplot(args, num_initial_con, num_ts):
 
     plt.show()
 
-oscillator_time_boxplot(args1, num_initial_con, num_ts)
+# oscillator_time_boxplot(args1, osc_sampler, num_initial_con, num_ts)
+# robertson_time_boxplot(args2, Rob_sampler, num_initial_con, num_ts)
+

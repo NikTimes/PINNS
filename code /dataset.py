@@ -6,7 +6,7 @@ from torch.utils.data import IterableDataset, DataLoader
 
 
 class ODEIterableDataset(IterableDataset):
-    """_summary_
+    """TBC
 
 
     """
@@ -51,7 +51,7 @@ class ODEIterableDataset(IterableDataset):
 
             t_span = self.t_span
             t_eval = self.t_eval
-            y0     = self.y0_sampler(1, dimension=2)[0]
+            y0     = self.y0_sampler(1)[0]
             method = self.method
 
             sol    = self.solver.solve(t_span, y0, method, t_eval=t_eval)
@@ -61,17 +61,33 @@ class ODEIterableDataset(IterableDataset):
 
         yield t, y
 
+
+
+"""
+This is just a test that the dataset class is working as intended
+
+osc_sampler = LatinHypercubeSampler(2, [-1, -1], [1, 1])
+rob_sampler   = DirichletSampler(alpha=[1, 1, 1])
+
+k1          = 4e-2
+k2          = 3e7
+k3          = 1e4
+args2       = [k1, k2, k3]
+
 dataset = ODEIterableDataset(
-    harm_osc([2, 0.1]), 
-    initial_sampler,
+    Robertson(args2), 
+    rob_sampler,
     10,
-    (0, 10)
+    (0, 100),
+    method = "BDF"
 )
 
 
 for _ in range(10):
     it = iter(dataset)
     t, y = next(it)
-    plt.plot(t, y[:, 0])
+    plt.xscale("log")
+    plt.plot(t, y)
 
 plt.show()
+"""
