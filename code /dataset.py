@@ -18,7 +18,6 @@ class ODEIterableDataset(IterableDataset):
         n_samples,
         t_span,
         method="RK45",
-        t_eval=None 
         ):
         
         super().__init__()
@@ -27,7 +26,6 @@ class ODEIterableDataset(IterableDataset):
 
         self.system     = system_class
         self.y0_sampler = y0_sampler
-        self.t_eval     = t_eval
         self.t_span     = t_span
         self.method     = method
 
@@ -49,45 +47,61 @@ class ODEIterableDataset(IterableDataset):
 
         for _ in range(iter_start, iter_end):
 
-            t_span = self.t_span
-            t_eval = self.t_eval
+            # Samples Initial Condition 
             y0     = self.y0_sampler(1)[0]
-            method = self.method
 
-            sol    = self.solver.solve(t_span, y0, method, t_eval=t_eval)
+            # Samples Random Time
+            t0, tf = self.t_span
+            t = np.random.uniform(t0, tf)
+            
+            # Solve only until t
+            sol    = self.solver.solve((t0, t), 
+                                        y0, 
+                                        self.method, 
+                                        t_eval=[t]) # Only Returns Solution at t 
+            
+            y_t = sol.y[:, -1]
 
-            t      = torch.tensor(sol.t, dtype=torch.float32)
-            y      = torch.tensor(sol.y.T, dtype=torch.float32)
+            I = torch.tensor(y0, dtype=torch.float32)  # Initial Condition
+            t = torch.tensor([t], dtype=torch.float32) # output time 
+            y = torch.tensor(y_t, dtype=torch.float32) # y_I(t)
 
-        yield t, y
+            yield I, t, y
+
+
 
 
 
 """
-This is just a test that the dataset class is working as intended
+Testing the dataset Class
 
-osc_sampler = LatinHypercubeSampler(2, [-1, -1], [1, 1])
-rob_sampler   = DirichletSampler(alpha=[1, 1, 1])
+k = 2.0
+c = 0.5
+system = harm_osc([k, c])
 
-k1          = 4e-2
-k2          = 3e7
-k3          = 1e4
-args2       = [k1, k2, k3]
-
-dataset = ODEIterableDataset(
-    Robertson(args2), 
-    rob_sampler,
-    10,
-    (0, 100),
-    method = "BDF"
+sampler = LatinHypercubeSampler(
+    dimensions=2,
+    lows=[-1.0, -1.0],
+    highs=[1.0, 1.0]
 )
 
 
-for _ in range(10):
-    it = iter(dataset)
-    t, y = next(it)
-    plt.xscale("log")
-    plt.plot(t, y)
+dataset = ODEIterableDataset(
+    system_class=system,
+    y0_sampler=sampler,
+    n_samples=100,
+    t_span=(0.0, 10),
+    method="RK45"
+)
 
-plt.show()
+
+it = iter(dataset)  # create the generator
+
+for i in range(100):
+    I, t, y = next(it)  # generate one sample
+
+    print(f"\nSample {i+1}")
+    print("Initial condition I:", I)
+    print("Time t:", t)
+    print("Solution y(t):", y)
 """
