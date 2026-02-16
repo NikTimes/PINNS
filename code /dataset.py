@@ -6,33 +6,39 @@ from torch.utils.data import IterableDataset, DataLoader
 
 
 class ODEIterableDataset(IterableDataset):
-    """TBC
+    """
+    Iterable Dataset for on the fly ODE data
 
+    Attributes:
+        size         (integer) : Desired size of the Dataset
+        system_class  (object) : ODE object with derivative method
+        sampler       (object) : Sampler Object with __call__ method
+        t_span        (tuple)  : Tuple including initial and end integration times
+        method        (String) : solve_ivp numerical integration method
 
     """
 
-    def __init__(
-        self, 
-        system_class,
-        y0_sampler,
-        n_samples,
-        t_span,
-        method="RK45",
-        ):
-        
-        super().__init__()
-        self.start = 0
-        self.end   = n_samples
+    def __init__(self, 
+                 size,
+                 system_class,
+                 sampler, 
+                 t_span,
+                 method="RK45"):
 
-        self.system     = system_class
-        self.y0_sampler = y0_sampler
-        self.t_span     = t_span
-        self.method     = method
+        self.start   = 0
+        self.end     = size
+        self.size    = size
 
-        self.solver     = ODEsolver(system_class)
+        self.system  = system_class
+        self.sampler = sampler
+        self.t_span  = t_span
+        self.method  = method
 
-
+        self.solver  = ODEsolver(system_class)
+    
     def __iter__(self):
+
+        # Handle Paralellism 
         worker_info = torch.utils.data.get_worker_info()
 
         if worker_info is None:
@@ -46,21 +52,22 @@ class ODEIterableDataset(IterableDataset):
             iter_end   = min(iter_start + per_worker, self.end)
 
         for _ in range(iter_start, iter_end):
+            
+            # Sample Initial Conditions
+            y0     =    self.sampler(1)[0]
 
-            # Samples Initial Condition 
-            y0     = self.y0_sampler(1)[0]
-
-            # Samples Random Time
+            # Sample Random integration end
             t0, tf = self.t_span
-            t = np.random.uniform(t0, tf)
-            
+            t      = np.random.uniform(t0, tf)
+
             # Solve only until t
-            sol    = self.solver.solve((t0, t), 
+            sol    = self.solver.solve((t0, tf), 
                                         y0, 
-                                        self.method, 
-                                        t_eval=[t]) # Only Returns Solution at t 
+                                        self.method,
+                                        t_eval=[t]) # Only Returns solution at t
             
-            y_t = sol.y[:, -1][0] # For Position only
+            # Extract final position 
+            y_t = sol.y[:, -1][0] 
 
             I = torch.tensor(y0,    dtype=torch.float32)  # Initial Condition
             t = torch.tensor([t],   dtype=torch.float32) # output time 
@@ -68,6 +75,9 @@ class ODEIterableDataset(IterableDataset):
 
 
             yield I, t, y
+    
+    def __len__(self):
+        return self.size
 
 
 """
@@ -80,25 +90,5 @@ sampler = LatinHypercubeSampler(
     lows      = [-1.0, -1.0],
     highs     = [1.0, 1.0]
 )
-
-
-dataset = ODEIterableDataset(
-    system_class=system,
-    y0_sampler=sampler,
-    n_samples=100,
-    t_span=(0.0, 10),
-    method="RK45"
-)
-
-
-it = iter(dataset)  # create the generator
-
-for i in range(100):
-    I, t, y = next(it)  # generate one sample
-
-    print(f"\nSample {i+1}")
-    print("Initial condition I:", I)
-    print("Time t:", t)
-    print("Solution y(t):", y)
 
 """

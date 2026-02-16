@@ -13,13 +13,17 @@ from tqdm import tqdm
 # 0. Hyper Parameters 
 # -------------------------------------------------------------------------------
 
+# WANDB
+
+WAND = True 
 # Training Parameters 
-num_samples           = 1_000
-num_epochs            = 32
+
+dataset_size          = 1000
+num_epochs            = 20
 
 batch_size            = 32
 num_workers           = 4
-learning_rate         = 0.016
+learning_rate         = 0.032
 
 # Loss Functions 
 
@@ -35,35 +39,15 @@ osc_sampler     = LatinHypercubeSampler(dimensions = 2,
                                         lows       = [-1, -1], 
                                         highs      = [1, 1])
 
-osc_object      = harm_osc(args1)
-osc_n_samples   = num_samples
-osc_t_span      = (0, 100)
+osc_object          = harm_osc(args1)
+osc_dataset_samples = dataset_size
+osc_t_span          = (0, 100)
 
-osc_dataset     = ODEIterableDataset(system_class = osc_object, 
-                                     y0_sampler   = osc_sampler, 
-                                     n_samples    = osc_n_samples, 
+osc_dataset     = ODEIterableDataset(size         = dataset_size,
+                                     system_class = osc_object, 
+                                     sampler      = osc_sampler, 
                                      t_span       = osc_t_span,
                                      method       = "RK45")
-
-# Robertson Model 
-
-k1            = 4e-2
-k2            = 3e7
-k3            = 1e4
-args2         = [k1, k2, k3]
-
-rob_sampler   = DirichletSampler(alpha = [1, 1, 1])
-
-rob_object    = Robertson(args2) 
-rob_n_samples = num_samples
-rob_t_span    = (0, 1e6)
-
-rob_dataset   = ODEIterableDataset(system_class = rob_object, 
-                                   y0_sampler   = rob_sampler, 
-                                   n_samples    = rob_n_samples, 
-                                   t_span       = rob_t_span,
-                                   method       = "BDF")
-
 
 # -------------------------------------------------------------------------------
 # 1. Retrieving data 
@@ -72,12 +56,6 @@ rob_dataset   = ODEIterableDataset(system_class = rob_object,
 # Harmonic Oscillator 
 
 osc_loader = DataLoader(dataset     = osc_dataset, 
-                        batch_size  = batch_size,
-                        num_workers = num_workers)
-
-# Roberston Model
-
-rob_loader = DataLoader(dataset     = rob_dataset, 
                         batch_size  = batch_size,
                         num_workers = num_workers)
 
@@ -121,21 +99,23 @@ optimizer      = torch.optim.Adam(osc_deepONet.parameters(),
 # 3. WandB config
 # -------------------------------------------------------------------------------
 
-wandb.init(
-    project="First DeepONet trial",
-    config={
-        "epochs"        : num_epochs,
-        "batch size"    : batch_size,
-        "learning rate" : learning_rate,
-        "hidden_dim"    : osc_hidden_size,
-        "depth"         : osc_depth,
-        "num workers"   : num_workers
-    }
-)
+if WAND: 
+    wandb.init(
+        project="First DeepONet trial",
+        config={
+            "epochs"        : num_epochs,
+            "batch size"    : batch_size,
+            "learning rate" : learning_rate,
+            "hidden_dim"    : osc_hidden_size,
+            "depth"         : osc_depth,
+            "num workers"   : num_workers
+        }
+    )
 
-cfg      = wandb.config
-run_name = wandb.run.name 
-
+    cfg      = wandb.config
+    run_name = wandb.run.name 
+else:
+    pass
 
 # -------------------------------------------------------------------------------
 # 4. Training Loop
@@ -146,6 +126,7 @@ for epoch in tqdm(range(num_epochs), desc="Training"):
     # Set Network to training mode 
     osc_deepONet.train()
     train_loss = 0.0
+    num_steps  = 0.0
 
     # Training Steps
     for I, t, y in osc_loader:
@@ -162,14 +143,16 @@ for epoch in tqdm(range(num_epochs), desc="Training"):
         optimizer.step()
 
         train_loss += loss.item()
+        num_steps      += 1
     
-    train_loss /= len(osc_loader)
+    train_loss /= num_steps
 
     # Validation Steps
 
     # Set model to evaluation mode
-    model.eval()
+    osc_deepONet.eval()
     val_loss = 0.0
+    num_steps  = 0.0
 
     # Validation Steps 
     with torch.no_grad():
@@ -181,6 +164,10 @@ for epoch in tqdm(range(num_epochs), desc="Training"):
             # Loss calculation
             loss = loss_fn(pred, y)
 
-            val_loss += loss.item()
+            val_loss  += loss.item()
+            num_steps += 1
 
-    val_loss /= len(osc_loader) 
+    val_loss /= num_steps 
+
+    # Weights And Biases Log 
+    wandb.log({"epoch": epoch, "train_loss": train_loss, "val_loss": val_loss})
