@@ -60,29 +60,25 @@ class ODEIterableDataset(IterableDataset):
                                         self.method, 
                                         t_eval=[t]) # Only Returns Solution at t 
             
-            y_t = sol.y[:, -1]
+            y_t = sol.y[:, -1][0] # For Position only
 
-            I = torch.tensor(y0, dtype=torch.float32)  # Initial Condition
-            t = torch.tensor([t], dtype=torch.float32) # output time 
-            y = torch.tensor(y_t, dtype=torch.float32) # y_I(t)
+            I = torch.tensor(y0,    dtype=torch.float32)  # Initial Condition
+            t = torch.tensor([t],   dtype=torch.float32) # output time 
+            y = torch.tensor([y_t], dtype=torch.float32) # y_I(t)
+
 
             yield I, t, y
 
 
-
-
-
 """
-Testing the dataset Class
-
 k = 2.0
 c = 0.5
 system = harm_osc([k, c])
 
 sampler = LatinHypercubeSampler(
     dimensions=2,
-    lows=[-1.0, -1.0],
-    highs=[1.0, 1.0]
+    lows      = [-1.0, -1.0],
+    highs     = [1.0, 1.0]
 )
 
 
@@ -104,4 +100,5 @@ for i in range(100):
     print("Initial condition I:", I)
     print("Time t:", t)
     print("Solution y(t):", y)
+
 """

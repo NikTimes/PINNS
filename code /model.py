@@ -14,9 +14,9 @@ class General_MLP(nn.Module):
     activation functions of the MLP with ease. 
 
     Attributes:
-        layers (torch list): Contains neural network layers, can be indexed like a python list
-        depth  (integer)   : Number of hidden layers in the MLP
-        act    (string)    : Defines the non-linear activation functions
+        layers (torch list)   : Contains neural network layers, can be indexed like a python list
+        depth  (integer)      : Number of hidden layers in the MLP
+        act    (torch method) : Defines the non-linear activation functions
     """
 
     def __init__(self, input_size, output_size, depth, hidden_size, act):
@@ -25,11 +25,11 @@ class General_MLP(nn.Module):
         parameters of the neural network. 
 
         Args:
-            input_size  (integer): Width of the input layer
-            output_size (integer): Width of the output layer
-            depth       (integer): Number of hidden layers in the MLP
-            hidden_size (integer): Width of the hidden layers
-            act          (string): Name of non-linear activation functions
+            input_size       (integer): Width of the input layer
+            output_size      (integer): Width of the output layer
+            depth            (integer): Number of hidden layers in the MLP
+            hidden_size      (integer): Width of the hidden layers
+            act         (torch method): Name of non-linear activation functions
         """
         super().__init__()
 
@@ -49,7 +49,7 @@ class General_MLP(nn.Module):
         # Adding output layer 
         self.layers.append(nn.Linear(hidden_size, output_size))
 
-    def forward(self, x, final_activation):
+    def forward(self, x, final_activation=False):
         """
         This method sequentially feeds the data through tall layers of the MLP.
         It is also necessary for training the neural network
@@ -97,4 +97,4 @@ class DeepONet(nn.Module):
         b = self.branch_net(u)
         t = self.trunk_net(y, final_activation=True)
 
-        return torch.sum(b * t, dim=1, keepdim=True) + bias
+        return torch.sum(b * t, dim=1, keepdim=True) + self.bias

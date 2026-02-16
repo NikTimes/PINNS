@@ -14,7 +14,7 @@ from tqdm import tqdm
 # -------------------------------------------------------------------------------
 
 # Training Parameters 
-num_samples_per_epoch = 1_000
+num_samples           = 1_000
 num_epochs            = 32
 
 batch_size            = 32
@@ -36,7 +36,7 @@ osc_sampler     = LatinHypercubeSampler(dimensions = 2,
                                         highs      = [1, 1])
 
 osc_object      = harm_osc(args1)
-osc_n_samples   = num_samples_per_epoch
+osc_n_samples   = num_samples
 osc_t_span      = (0, 100)
 
 osc_dataset     = ODEIterableDataset(system_class = osc_object, 
@@ -55,7 +55,7 @@ args2         = [k1, k2, k3]
 rob_sampler   = DirichletSampler(alpha = [1, 1, 1])
 
 rob_object    = Robertson(args2) 
-rob_n_samples = num_samples_per_epoch
+rob_n_samples = num_samples
 rob_t_span    = (0, 1e6)
 
 rob_dataset   = ODEIterableDataset(system_class = rob_object, 
@@ -89,27 +89,33 @@ rob_loader = DataLoader(dataset     = rob_dataset,
 # Harmonic Oscillator 
 
 # Define branch and trunk network parameters 
-osc_input_size  = 3
-osc_output_size = 1
-osc_depth       = 2
-osc_hidden_size = 32
+osc_input_size_b  = 2
+osc_input_size_t  = 1
+osc_output_size   = 2
+osc_depth         = 2
+osc_hidden_size   = 32
 
 # Initialize Branch and Trunk Nets 
-osc_branch_net = General_MLP(input_size  = osc_input_size, 
+osc_branch_net = General_MLP(input_size  = osc_input_size_b, 
                              output_size = osc_output_size,
                              depth       = osc_depth, 
                              hidden_size = osc_hidden_size, 
-                             act         = nn.Tanh)
+                             act         = nn.Tanh())
 
-osc_trunk_net = General_MLP(input_size   = osc_input_size, 
+osc_trunk_net  = General_MLP(input_size  = osc_input_size_t, 
                              output_size = osc_output_size,
                              depth       = osc_depth, 
                              hidden_size = osc_hidden_size, 
-                             act         =nn.Tanh)
+                             act         = nn.Tanh())
 
 # Initialize DeepONet 
-osc_deepONet = DeepONet(branch_net = osc_branch_net, 
-                        trunk_net  = osc_trunk_net)
+osc_deepONet   = DeepONet(branch_net = osc_branch_net, 
+                          trunk_net  = osc_trunk_net)
+
+
+# Initialize Adam Optimizer
+optimizer      = torch.optim.Adam(osc_deepONet.parameters(), 
+                                  lr=learning_rate)
 
 # -------------------------------------------------------------------------------
 # 3. WandB config
@@ -127,12 +133,54 @@ wandb.init(
     }
 )
 
-cfg = wandb.config
+cfg      = wandb.config
 run_name = wandb.run.name 
 
-for epoch in tqdm(range(cfg.epochs), desc="Training"):
 
+# -------------------------------------------------------------------------------
+# 4. Training Loop
+# -------------------------------------------------------------------------------
+
+for epoch in tqdm(range(num_epochs), desc="Training"):
+
+    # Set Network to training mode 
     osc_deepONet.train()
     train_loss = 0.0
 
+    # Training Steps
+    for I, t, y in osc_loader:
+        
+        # Network forward Pass
+        pred = osc_deepONet(I, t)
+
+        # Loss calculation
+        loss = loss_fn(pred, y)
+
+        # Optimizer Steps
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        train_loss += loss.item()
     
+    train_loss /= len(osc_loader)
+
+    # Validation Steps
+
+    # Set model to evaluation mode
+    model.eval()
+    val_loss = 0.0
+
+    # Validation Steps 
+    with torch.no_grad():
+        for I, t, y in osc_loader:
+
+            # Network Forward Pass
+            pred = osc_deepONet(I, t)
+
+            # Loss calculation
+            loss = loss_fn(pred, y)
+
+            val_loss += loss.item()
+
+    val_loss /= len(osc_loader) 
