@@ -5,29 +5,35 @@ from dataset import ODEIterableDataset
 import torch
 from torch.utils.data import DataLoader
 
+import numpy as np 
 import wandb
 from tqdm import tqdm 
-
 
 # -------------------------------------------------------------------------------
 # 0. Hyper Parameters 
 # -------------------------------------------------------------------------------
 
-# WANDB
+# Detect GPU 
 
-WAND = True 
+device     = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# Save the model
+
+Save_model    = False
 # Training Parameters 
 
-dataset_size          = 1000
-num_epochs            = 20
-
-batch_size            = 32
-num_workers           = 4
-learning_rate         = 0.032
+num_epochs  = 100
+num_workers = 12
 
 # Loss Functions 
 
 loss_fn     = torch.nn.MSELoss()
+
+# Fixed branch and trunk input/output sizes
+
+osc_input_size_b  = 2
+osc_input_size_t  = 1
+osc_output_size   = 50
 
 # Harmonic Oscillator 
 
@@ -40,134 +46,147 @@ osc_sampler     = LatinHypercubeSampler(dimensions = 2,
                                         highs      = [1, 1])
 
 osc_object          = harm_osc(args1)
-osc_dataset_samples = dataset_size
-osc_t_span          = (0, 100)
-
-osc_dataset     = ODEIterableDataset(size         = dataset_size,
-                                     system_class = osc_object, 
-                                     sampler      = osc_sampler, 
-                                     t_span       = osc_t_span,
-                                     method       = "RK45")
-
-# -------------------------------------------------------------------------------
-# 1. Retrieving data 
-# -------------------------------------------------------------------------------
-
-# Harmonic Oscillator 
-
-osc_loader = DataLoader(dataset     = osc_dataset, 
-                        batch_size  = batch_size,
-                        num_workers = num_workers)
+osc_t_span          = (0, 10)
 
 
 # -------------------------------------------------------------------------------
-# 2. Models
+# 1. Training Function called by WANDB agent
 # -------------------------------------------------------------------------------
 
-# Harmonic Oscillator 
+def train(config=None):
 
-# Define branch and trunk network parameters 
-osc_input_size_b  = 2
-osc_input_size_t  = 1
-osc_output_size   = 2
-osc_depth         = 2
-osc_hidden_size   = 32
-
-# Initialize Branch and Trunk Nets 
-osc_branch_net = General_MLP(input_size  = osc_input_size_b, 
-                             output_size = osc_output_size,
-                             depth       = osc_depth, 
-                             hidden_size = osc_hidden_size, 
-                             act         = nn.Tanh())
-
-osc_trunk_net  = General_MLP(input_size  = osc_input_size_t, 
-                             output_size = osc_output_size,
-                             depth       = osc_depth, 
-                             hidden_size = osc_hidden_size, 
-                             act         = nn.Tanh())
-
-# Initialize DeepONet 
-osc_deepONet   = DeepONet(branch_net = osc_branch_net, 
-                          trunk_net  = osc_trunk_net)
+    # Initialize WANDB config
+    wandb.init(config=config)
+    wandb.config.update({"device": str(device)})
+    cfg = wandb.config
 
 
-# Initialize Adam Optimizer
-optimizer      = torch.optim.Adam(osc_deepONet.parameters(), 
-                                  lr=learning_rate)
+    # Set config hyperparameters
+    learning_rate      = cfg.learning_rate
+    batch_size         = cfg.batch_size
+    depth              = cfg.depth
+    hidden_size        = cfg.hidden_size
+    train_dataset_size = cfg.train_dataset_size
+    val_dataset_size   = cfg.val_dataset_size
 
-# -------------------------------------------------------------------------------
-# 3. WandB config
-# -------------------------------------------------------------------------------
+    # Initialize datasets 
+    train_osc_dataset  = ODEIterableDataset(size         = train_dataset_size,
+                                            system_class = osc_object, 
+                                            sampler      = osc_sampler, 
+                                            t_span       = osc_t_span,
+                                            method       = "RK45")
 
-if WAND: 
-    wandb.init(
-        project="First DeepONet trial",
-        config={
-            "epochs"        : num_epochs,
-            "batch size"    : batch_size,
-            "learning rate" : learning_rate,
-            "hidden_dim"    : osc_hidden_size,
-            "depth"         : osc_depth,
-            "num workers"   : num_workers
-        }
-    )
+    val_osc_dataset    = ODEIterableDataset(size         = val_dataset_size,
+                                            system_class = osc_object, 
+                                            sampler      = osc_sampler, 
+                                            t_span       = osc_t_span,
+                                            method       = "RK45")
 
-    cfg      = wandb.config
-    run_name = wandb.run.name 
-else:
-    pass
+    # Initialize dataloaders
+    train_osc_loader = DataLoader(dataset     = train_osc_dataset, 
+                                  batch_size  = batch_size,
+                                  num_workers = num_workers)
 
-# -------------------------------------------------------------------------------
-# 4. Training Loop
-# -------------------------------------------------------------------------------
-
-for epoch in tqdm(range(num_epochs), desc="Training"):
-
-    # Set Network to training mode 
-    osc_deepONet.train()
-    train_loss = 0.0
-    num_steps  = 0.0
-
-    # Training Steps
-    for I, t, y in osc_loader:
-        
-        # Network forward Pass
-        pred = osc_deepONet(I, t)
-
-        # Loss calculation
-        loss = loss_fn(pred, y)
-
-        # Optimizer Steps
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        train_loss += loss.item()
-        num_steps      += 1
+    val_osc_loader   = DataLoader(dataset     = val_osc_dataset, 
+                                  batch_size  = batch_size,
+                                  num_workers = num_workers)
     
-    train_loss /= num_steps
+    # Initialize Branch and Trunk Nets 
+    osc_branch_net   = General_MLP(input_size  = osc_input_size_b, 
+                                   output_size = osc_output_size,
+                                   depth       = depth, 
+                                   hidden_size = hidden_size, 
+                                   act         = nn.Tanh())
 
-    # Validation Steps
+    osc_trunk_net    = General_MLP(input_size  = osc_input_size_t, 
+                                   output_size = osc_output_size,
+                                   depth       = depth, 
+                                   hidden_size = hidden_size, 
+                                   act         = nn.Tanh())
 
-    # Set model to evaluation mode
-    osc_deepONet.eval()
-    val_loss = 0.0
-    num_steps  = 0.0
+    # Initialize DeepONet 
+    osc_deepONet     = DeepONet(branch_net = osc_branch_net, 
+                                trunk_net  = osc_trunk_net).to(device=device)
+    
+    # Initialize Adam Optimizer
+    optimizer        = torch.optim.Adam(osc_deepONet.parameters(), 
+                                        lr=learning_rate)
 
-    # Validation Steps 
-    with torch.no_grad():
-        for I, t, y in osc_loader:
 
-            # Network Forward Pass
+    # -------------------------------------------------------------------------------
+    # Training Loop
+    # -------------------------------------------------------------------------------
+
+    for epoch in tqdm(range(num_epochs), desc="Training"):
+
+        # Set Network to training mode 
+        osc_deepONet.train()
+        running_loss = 0.0
+        num_steps    = 0.0
+
+        # Training Steps
+        for I, t, y in train_osc_loader:
+
+            # Use GPU, also note y[:, 0:1] because we are only extracting first output of solve_ivp
+            I, t, y = I.to(device), t.to(device), y[:, 0:1].to(device)
+            
+            # Network forward Pass
             pred = osc_deepONet(I, t)
 
             # Loss calculation
             loss = loss_fn(pred, y)
 
-            val_loss  += loss.item()
-            num_steps += 1
+            # Optimizer Steps
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
-    val_loss /= num_steps 
+            running_loss += loss.item()
+            num_steps  += 1
+        
+        train_loss = running_loss / num_steps # this can probably be changed to len(dataloader)
 
-    # Weights And Biases Log 
-    wandb.log({"epoch": epoch, "train_loss": train_loss, "val_loss": val_loss})
+        # Validation Steps
+
+        # Set model to evaluation mode
+        osc_deepONet.eval()
+        running_loss   = 0.0
+        num_steps      = 0.0
+
+        # Validation Steps 
+        with torch.no_grad():
+            for I, t, y in val_osc_loader:
+                
+                # Use GPU, also note y[:, 0:1] because we are only extracting first output of solve_ivp
+                I, t, y = I.to(device), t.to(device), y[:, 0:1].to(device)
+
+                # Network Forward Pass
+                pred = osc_deepONet(I, t)
+
+                # Loss calculation
+                loss = loss_fn(pred, y)
+
+                running_loss += loss.item()
+                num_steps += 1
+
+        val_loss = running_loss / num_steps
+
+        # Weights And Biases Log 
+        wandb.log({"train_loss": np.log(train_loss), "val_loss": np.log(val_loss)})
+
+
+    if Save_model:
+        torch.save(osc_deepONet.state_dict(), "weights/best_model.pth")
+        wandb.save("weights/best_model.pth")  # syncs the file to W&B
+
+
+
+
+"""train(config={
+    "learning_rate"     : 0.0068741,
+    "batch_size"        : 32,
+    "hidden_size"       : 32,
+    "depth"             : 4,
+    "train_dataset_size": 1000,
+    "val_dataset_size"  : 100,
+})"""

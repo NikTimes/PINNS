@@ -77,7 +77,7 @@ class General_MLP(nn.Module):
 
 class DeepONet(nn.Module):
     """
-    TBC
+    Deep Neural Operator as applied in https://arxiv.org/pdf/1910.03193
 
     Attributes:
         nn (_type_): _description_
@@ -94,7 +94,9 @@ class DeepONet(nn.Module):
 
     def forward(self, u, y):
 
+        # Shape (B, p)
         b = self.branch_net(u)
         t = self.trunk_net(y, final_activation=True)
 
-        return torch.sum(b * t, dim=1, keepdim=True) + self.bias
+        # dim 1 sums over p, final shape is [B, 1]
+        return torch.sum(b * t, dim=1, keepdim=True)

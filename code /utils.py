@@ -70,7 +70,8 @@ class harm_osc():
         dvdt = - self.k*x - self.c*v
 
         return np.array([dxdt, dvdt])
-    
+
+
 class Robertson():
     """
     Represents the Robertson model involving three chemical species

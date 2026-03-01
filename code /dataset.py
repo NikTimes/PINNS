@@ -23,18 +23,18 @@ class ODEIterableDataset(IterableDataset):
                  system_class,
                  sampler, 
                  t_span,
-                 method="RK45"):
+                 method     ="RK45"):
 
-        self.start   = 0
-        self.end     = size
-        self.size    = size
+        self.start      = 0
+        self.end        = size
+        self.size       = size
 
-        self.system  = system_class
-        self.sampler = sampler
-        self.t_span  = t_span
-        self.method  = method
+        self.system     = system_class
+        self.sampler    = sampler
+        self.t_span     = t_span
+        self.method     = method
 
-        self.solver  = ODEsolver(system_class)
+        self.solver     = ODEsolver(system_class)
     
     def __iter__(self):
 
@@ -61,15 +61,16 @@ class ODEIterableDataset(IterableDataset):
             t      = np.random.uniform(t0, tf)
 
             # Solve only until t
-            sol    = self.solver.solve((t0, tf), 
+            sol    = self.solver.solve((t0, t),     # Solve only until time t
                                         y0, 
                                         self.method,
                                         t_eval=[t]) # Only Returns solution at t
+ 
             
-            # Extract final position 
-            y_t = sol.y[:, -1][0] 
+            # Extract Position Only
+            y_t = sol.y[:, -1][0]
 
-            I = torch.tensor(y0,    dtype=torch.float32)  # Initial Condition
+            I = torch.tensor(y0,    dtype=torch.float32) # Initial Condition
             t = torch.tensor([t],   dtype=torch.float32) # output time 
             y = torch.tensor([y_t], dtype=torch.float32) # y_I(t)
 
@@ -78,6 +79,7 @@ class ODEIterableDataset(IterableDataset):
     
     def __len__(self):
         return self.size
+
 
 
 """
@@ -90,5 +92,4 @@ sampler = LatinHypercubeSampler(
     lows      = [-1.0, -1.0],
     highs     = [1.0, 1.0]
 )
-
 """
