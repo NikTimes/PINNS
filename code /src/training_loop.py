@@ -33,7 +33,6 @@ loss_fn     = torch.nn.MSELoss()
 
 osc_input_size_b  = 2
 osc_input_size_t  = 1
-osc_latent_size   = 50
 osc_output_size   = 2
 
 # DeepONet output suze
@@ -73,6 +72,7 @@ def train(config=None):
     hidden_size        = cfg.hidden_size
     train_dataset_size = cfg.train_dataset_size
     val_dataset_size   = cfg.val_dataset_size
+    osc_latent_size    = cfg.latent_size
 
     # Initialize datasets 
     train_osc_dataset  = ODEIterableDataset(size         = train_dataset_size,
@@ -187,7 +187,6 @@ def train(config=None):
 
 
 
-"""
 train(config={
     "learning_rate"     : 0.0068741,
     "batch_size"        : 32,
@@ -195,5 +194,5 @@ train(config={
     "depth"             : 4,
     "train_dataset_size": 1000,
     "val_dataset_size"  : 100,
+    "latent_size"       : 50
 })
-"""

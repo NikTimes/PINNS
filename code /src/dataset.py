@@ -65,9 +65,9 @@ class ODEIterableDataset(IterableDataset):
                                         y0, 
                                         self.method,
                                         t_eval=[t]) # Only Returns solution at t
- 
+                                        
             
-            # Extract Position Only
+
             y_t = sol.y[:, -1]
 
             I = torch.tensor(y0,    dtype=torch.float32) # Initial Condition
@@ -79,6 +79,7 @@ class ODEIterableDataset(IterableDataset):
     
     def __len__(self):
         return self.size
+
 
 
 
