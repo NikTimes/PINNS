@@ -33,7 +33,12 @@ loss_fn     = torch.nn.MSELoss()
 
 osc_input_size_b  = 2
 osc_input_size_t  = 1
-osc_output_size   = 50
+osc_latent_size   = 50
+osc_output_size   = 2
+
+# DeepONet output suze
+
+osc_output_size   = 2
 
 # Harmonic Oscillator 
 
@@ -105,8 +110,9 @@ def train(config=None):
                                    act         = nn.Tanh())
 
     # Initialize DeepONet 
-    osc_deepONet     = DeepONet(branch_net = osc_branch_net, 
-                                trunk_net  = osc_trunk_net).to(device=device)
+    osc_deepONet     = DeepONet(branch_net  = osc_branch_net, 
+                                trunk_net   = osc_trunk_net,
+                                output_size = osc_output_size).to(device=device)
     
     # Initialize Adam Optimizer
     optimizer        = torch.optim.Adam(osc_deepONet.parameters(), 
@@ -128,7 +134,7 @@ def train(config=None):
         for I, t, y in train_osc_loader:
 
             # Use GPU, also note y[:, 0:1] because we are only extracting first output of solve_ivp
-            I, t, y = I.to(device), t.to(device), y[:, 0:1].to(device)
+            I, t, y = I.to(device), t.to(device), y.to(device)
             
             # Network forward Pass
             pred = osc_deepONet(I, t)
@@ -157,8 +163,7 @@ def train(config=None):
         with torch.no_grad():
             for I, t, y in val_osc_loader:
                 
-                # Use GPU, also note y[:, 0:1] because we are only extracting first output of solve_ivp
-                I, t, y = I.to(device), t.to(device), y[:, 0:1].to(device)
+                I, t, y = I.to(device), t.to(device), y.to(device)
 
                 # Network Forward Pass
                 pred = osc_deepONet(I, t)
@@ -182,11 +187,13 @@ def train(config=None):
 
 
 
-"""train(config={
+"""
+train(config={
     "learning_rate"     : 0.0068741,
     "batch_size"        : 32,
     "hidden_size"       : 32,
     "depth"             : 4,
     "train_dataset_size": 1000,
     "val_dataset_size"  : 100,
-})"""
+})
+"""

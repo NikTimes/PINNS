@@ -77,20 +77,21 @@ class General_MLP(nn.Module):
 
 class DeepONet(nn.Module):
     """
-    Deep Neural Operator as applied in https://arxiv.org/pdf/1910.03193
+    Deep Neural Operator designes as in https://arxiv.org/pdf/1910.03193
 
     Attributes:
         nn (_type_): _description_
     """
 
-    def __init__(self, branch_net, trunk_net):
+    def __init__(self, branch_net, trunk_net, output_size):
 
         super().__init__()
 
         self.branch_net = branch_net
         self.trunk_net  = trunk_net
 
-        self.bias       = nn.Parameter(torch.ones(1), requires_grad=True)
+        self.bias       = nn.Parameter(torch.ones(output_size), requires_grad=True)
+        self.n_output   = output_size
 
     def forward(self, u, y):
 
@@ -98,5 +99,18 @@ class DeepONet(nn.Module):
         b = self.branch_net(u)
         t = self.trunk_net(y, final_activation=True)
 
-        # dim 1 sums over p, final shape is [B, 1]
-        return torch.sum(b * t, dim=1, keepdim=True)
+        # Check that b, and t latent spaces can be divided in chunks 
+        p = b.shape[1]
+        assert p % self.n_output == 0, f"Latent Dimension p={p} must be divisible by the number of outputs={self.n_output}"
+        
+        # Determine size that latent space can be 
+        chunk_size = p // self.n_output
+
+        # Reshape to (B, n_output, chunk_size) 
+        b   = b.view(-1, self.n_output, chunk_size)   # (B, n_output, chunk_size)
+        t   = t.view(-1, self.n_output, chunk_size)   # (B, n_output, chunk_size)
+
+        # Sum along (chunk size) to yield shape (B, n_output)
+        out = (b*t).sum(dim=-1) + self.bias   
+
+        return out

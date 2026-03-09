@@ -68,11 +68,11 @@ class ODEIterableDataset(IterableDataset):
  
             
             # Extract Position Only
-            y_t = sol.y[:, -1][0]
+            y_t = sol.y[:, -1]
 
             I = torch.tensor(y0,    dtype=torch.float32) # Initial Condition
             t = torch.tensor([t],   dtype=torch.float32) # output time 
-            y = torch.tensor([y_t], dtype=torch.float32) # y_I(t)
+            y = torch.tensor(y_t, dtype=torch.float32) # y_I(t)
 
 
             yield I, t, y
