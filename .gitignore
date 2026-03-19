@@ -1,0 +1,13 @@
+# Ignore everything
+*
+
+# Except these
+!*.py
+!*.ipynb
+!*.pth
+!.gitignore
+# !requirements.txt
+!PINNS/requirements.txt
+
+# Allow directories to be traversed
+!*/

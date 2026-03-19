@@ -1,25 +1,27 @@
-try:
-    from src.utils import ODEsolver
-except ModuleNotFoundError:
-    from utils import ODEsolver
+
+from src.physics.solver import ODEsolver
 
 import numpy as np 
 
 import torch
 from torch.utils.data import IterableDataset, DataLoader
 
+# ------------------------------------------------
+# Dataset Class
+# ------------------------------------------------
 
 class ODEIterableDataset(IterableDataset):
     """
     Iterable Dataset for on the fly ODE data
 
     Attributes:
-        size         (integer) : Desired size of the Dataset
-        system_class  (object) : ODE object with derivative method
-        sampler       (object) : Sampler Object with __call__ method
-        t_span        (tuple)  : Tuple including initial and end integration times
-        method        (String) : solve_ivp numerical integration method
-        full_solution (String) : Whether or not to output full solution or solution at time tf
+        size         (integer)      : Desired size of the Dataset
+        system_class  (object)      : ODE object with derivative method
+        sampler       (object)      : Sampler Object with __call__ method
+        t_span        (tuple)       : Tuple including initial and end integration times
+        method        (String)      : solve_ivp numerical integration method
+        full_solution (String)      : Whether or not to output full solution or solution at time tf
+        output_mask (integer array) : Allows the user to choose specific outputs 
 
     """
 
@@ -29,7 +31,8 @@ class ODEIterableDataset(IterableDataset):
                  sampler, 
                  t_span,
                  method        = "RK45",
-                 full_solution = False):
+                 full_solution = False,
+                 output_mask   = None):
 
         self.start      = 0
         self.end        = size
@@ -40,6 +43,7 @@ class ODEIterableDataset(IterableDataset):
         self.t_span        = t_span
         self.method        = method
         self.full_solution = full_solution
+        self.output_mask   = output_mask
 
         self.solver     = ODEsolver(system_class)
     
@@ -88,6 +92,10 @@ class ODEIterableDataset(IterableDataset):
                 # Store solution at time t
                 y_t    = sol.y[:, -1]
                 t_eval = sol.t[:] 
+
+            # Select desired outputs 
+            if self.output_mask is not None:
+                y_t = y_t[self.output_mask]
                                         
 
             I = torch.tensor(y0,    dtype=torch.float32) # Initial Condition
