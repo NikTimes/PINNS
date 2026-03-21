@@ -81,7 +81,7 @@ class DirichletSampler:
         Fill array with ones for uniform distribution. 
     """
 
-    def __init__(self, alpha):
+    def __init__(self, alpha=[1, 1, 1]):
         """
         Initializes Dirichlet Sampler.
 

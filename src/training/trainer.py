@@ -9,9 +9,6 @@ from tqdm import tqdm
 import os
 
 
-
-
-
 class Trainer():
 
     def __init__(self, model, train_dataset, val_dataset, optimizer, loss_fn, train_cfg, model_cfg):
@@ -30,7 +27,7 @@ class Trainer():
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # Check for Sweep Configuration
-        if not config:
+        if config is None:
             config = {**self.train_cfg, **self.model_cfg, "device": str(device)}
 
         # Initialize Weights and Biases
