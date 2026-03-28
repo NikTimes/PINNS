@@ -6,6 +6,7 @@ class LogDeepONet(nn.Module):
     """
     Deep Neural Operator designes as in https://arxiv.org/pdf/1910.03193
     DeepONet with log1p time transformation for stiff ODEs with large t_span
+    https://arxiv.org/pdf/2103.15341
 
     Attributes:
         nn (_type_): _description_
@@ -45,6 +46,7 @@ class LogDeepONet(nn.Module):
         out = (b*t).sum(dim=-1) + self.bias   
 
         return out
+    
 
 # ---------------------------------------------------
 # Build DeepONet Helper Function
