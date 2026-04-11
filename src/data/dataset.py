@@ -2,6 +2,7 @@
 from src.physics.solver import ODEsolver
 
 import numpy as np 
+from scipy.stats import loguniform
 
 import torch
 from torch.utils.data import IterableDataset, DataLoader
@@ -31,6 +32,7 @@ class ODEIterableDataset(IterableDataset):
                  sampler, 
                  t_span,
                  method        = "RK45",
+                 log_sampling  = False, 
                  full_solution = False,
                  output_mask   = None):
 
@@ -41,11 +43,22 @@ class ODEIterableDataset(IterableDataset):
         self.system        = system_class
         self.sampler       = sampler
         self.t_span        = t_span
+
         self.method        = method
+        self.log_sampling  = log_sampling
         self.full_solution = full_solution
         self.output_mask   = output_mask
 
         self.solver     = ODEsolver(system_class)
+
+    def _time_sample(self, t0, tf):
+
+        if self.log_sampling:
+            assert t0 > 0, "log_sampling requires t0 > 0 or very small t0"
+            return loguniform.rvs(t0, tf)
+
+        else:
+            return np.random.uniform(t0, tf)
     
     def __iter__(self):
 
@@ -69,7 +82,7 @@ class ODEIterableDataset(IterableDataset):
 
             # Sample Random integration end
             t0, tf = self.t_span
-            t      = np.random.uniform(t0, tf)
+            t      = self._time_sample(t0, tf)
 
             # Evaluate everywhere
             if self.full_solution:
@@ -107,5 +120,4 @@ class ODEIterableDataset(IterableDataset):
     
     def __len__(self):
         return self.size
-
 
