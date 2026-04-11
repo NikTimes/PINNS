@@ -3,7 +3,7 @@ import torch
 import time
 
 
-def timing_data(model, ODEsolver, sampler, t_final, num_samples, num_boxes, device):
+def timing_data(model, ODEsolver, sampler, t_final, num_samples, num_boxes, method, device):
 
     # Initialize data arrays
     solver_timing = []    
@@ -29,7 +29,7 @@ def timing_data(model, ODEsolver, sampler, t_final, num_samples, num_boxes, devi
 
                 # Solve using ODESolver   
                 start = time.perf_counter()
-                sol   = ODEsolver((0, t_val), y, t_eval=[t_val])
+                sol   = ODEsolver((0, t_val), y, t_eval=[t_val], method=method)
                 end   = time.perf_counter()
                 solver_time.append(end - start)
 

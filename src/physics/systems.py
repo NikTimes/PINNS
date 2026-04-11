@@ -145,8 +145,8 @@ class Robertson():
 
         y1, y2, y3 = y
 
-        dy1 = -self.k1*y1 + self.k2*y2*y3
-        dy2 =  self.k1*y1 - self.k2*y2*y3 - self.k3*y2**2
-        dy3 =  self.k3*y2**2
+        dy1 = -self.k1*y1 + self.k3*y2*y3
+        dy2 =  self.k1*y1 - self.k3*y2*y3 - self.k2*y2**2
+        dy3 =  self.k2*y2**2
 
         return np.array([dy1, dy2, dy3])

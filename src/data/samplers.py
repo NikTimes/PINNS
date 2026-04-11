@@ -104,3 +104,41 @@ class DirichletSampler:
         """
 
         return np.random.dirichlet(alpha=self.alpha, size=num_samples) 
+
+
+
+class ConstrainedLHCSampler:
+    """
+    Samples 3-species system with constraints:
+
+    x1 in [0.98, 1]
+    x2 = 0
+    x3 = 1 - x1
+
+    Uses 1D Latin Hypercube sampling internally.
+    """
+
+    def __init__(self, low=0.98, high=1.0):
+        self.low = low
+        self.high = high
+        self.sampler = qmc.LatinHypercube(d=1)
+
+    def __call__(self, num_samples):
+        """
+        Generate samples.
+
+        Args:
+            num_samples (int): number of samples
+        """
+
+        # LHS in [0,1]
+        u = self.sampler.random(n=num_samples).flatten()
+
+        # Map to [low, high]
+        x1 = self.low + (self.high - self.low) * u
+
+        # Apply constraints
+        x2 = np.zeros_like(x1)
+        x3 = 1.0 - x1
+
+        return np.stack([x1, x2, x3], axis=1)

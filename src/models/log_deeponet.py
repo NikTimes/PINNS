@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+import numpy as np
+
 from .mlp import General_MLP
 
 class LogDeepONet(nn.Module):
@@ -12,38 +14,36 @@ class LogDeepONet(nn.Module):
         nn (_type_): _description_
     """
 
-    def __init__(self, branch_net, trunk_net, output_size):
-
+    def __init__(self, branch_net, trunk_net, output_size, t_span):
+        
         super().__init__()
 
         self.branch_net = branch_net
         self.trunk_net  = trunk_net
-
-        self.bias       = nn.Parameter(torch.ones(output_size), requires_grad=True)
+        self.bias       = nn.Parameter(torch.zeros(output_size), requires_grad=True)
         self.n_output   = output_size
 
+        # Precompute normalization constants from t_span
+        t0, tf          = t_span
+        self.log_t_min  = np.log10(t0)
+        self.log_t_max  = np.log10(tf)
+
     def forward(self, u, y):
-        
-        # Transforms Trunk input 
-        y = torch.log1p(y)
 
-        # Shape (B, p)
-        b = self.branch_net(u)
-        t = self.trunk_net(y, final_activation=True)
+        # Normalize log10(t) to [0, 1] automatically for any t_span
+        y = torch.clamp(y, min=1e-30)
+        y = torch.log10(y)
+        y = (y - self.log_t_min) / (self.log_t_max - self.log_t_min)
 
-        # Check that b, and t latent spaces can be divided in chunks 
-        p = b.shape[1]
-        assert p % self.n_output == 0, f"Latent Dimension p={p} must be divisible by the number of outputs={self.n_output}"
-        
-        # Determine size that latent space can be 
+        b   = self.branch_net(u)
+        t   = self.trunk_net(y, final_activation=True)
+
+        p          = b.shape[1]
         chunk_size = p // self.n_output
 
-        # Reshape to (B, n_output, chunk_size) 
-        b   = b.view(-1, self.n_output, chunk_size)   # (B, n_output, chunk_size)
-        t   = t.view(-1, self.n_output, chunk_size)   # (B, n_output, chunk_size)
-
-        # Sum along (chunk size) to yield shape (B, n_output)
-        out = (b*t).sum(dim=-1) + self.bias   
+        b   = b.view(-1, self.n_output, chunk_size)
+        t   = t.view(-1, self.n_output, chunk_size)
+        out = (b * t).sum(dim=-1) + self.bias
 
         return out
     
@@ -83,4 +83,5 @@ def build_logdeeponet(cfg) -> nn.Module:
     
     return LogDeepONet(branch_net  = branch_net, 
                        trunk_net   = trunk_net, 
-                       output_size = cfg["output_size"])
+                       output_size = cfg["output_size"],
+                       t_span      = cfg["t_span"])

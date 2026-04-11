@@ -11,7 +11,7 @@ import os
 
 class Trainer():
 
-    def __init__(self, model, train_dataset, val_dataset, optimizer, loss_fn, train_cfg, model_cfg):
+    def __init__(self, model, train_dataset, val_dataset, optimizer, loss_fn, train_cfg, model_cfg, project=None, mode = "offline"):
 
         self.model         = model
         self.train_dataset = train_dataset
@@ -20,6 +20,8 @@ class Trainer():
         self.optimizer     = optimizer
         self.train_cfg     = train_cfg
         self.model_cfg     = model_cfg
+        self.project       = project
+        self.mode          = mode
     
     def run(self, config=None):
 
@@ -32,9 +34,9 @@ class Trainer():
 
         # Initialize Weights and Biases
         wandb.init(
-            project = "PINNS-testing",
+            project = self.project,
             config  = config,
-            mode    = "online"
+            mode    = self.mode
         )
 
         cfg = wandb.config
@@ -54,10 +56,10 @@ class Trainer():
             train_loss = train_one_epoch(self.model, train_loader, self.optimizer, self.loss_fn, device)
 
             # Validation Epoch
-            val_loss   = validate(self.model, train_loader, self.loss_fn, device)
+            val_loss   = validate(self.model, val_loader, self.loss_fn, device)
 
             # Weights And Biases Log 
-            wandb.log({"train_loss": np.log(train_loss), "val_loss": np.log(val_loss)})
+            wandb.log({"train_loss": np.log(train_loss), "val_loss": val_loss})
         
         # Save the Model weights 
         if cfg["Save_model"]: 
