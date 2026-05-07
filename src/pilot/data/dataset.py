@@ -1,5 +1,5 @@
 
-from src.physics.solver import ODEsolver
+from pilot.physics.solver import ODEsolver
 
 import numpy as np 
 from scipy.stats import loguniform

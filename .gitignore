@@ -6,8 +6,10 @@
 !*.ipynb
 !*.pth
 !.gitignore
-# !requirements.txt
-!PINNS/requirements.txt
+!*.toml
+!LICENCE.txt
+!README.md
+
 
 # Allow directories to be traversed
 !*/

@@ -2,14 +2,11 @@
 # Imports
 # ============================================================
 
-import sys
-sys.path.insert(0, "../..")
-
-from src.models        import build_logdeeponet
-from src.data          import ODEIterableDataset, DirichletSampler, ConstrainedLHCSampler
-from src.physics       import Robertson
-from src.training      import Sweeper
-from src.losses        import ScaledMSE, RobertsonPhysicsLoss
+from pilot.models        import build_logdeeponet
+from pilot.data          import ODEIterableDataset, DirichletSampler, ConstrainedLHCSampler
+from pilot.physics       import Robertson
+from pilot.training      import Sweeper
+from pilot.losses        import ScaledMSE, rob_loss
 
 import torch 
 
@@ -103,7 +100,7 @@ val_dataset      = ODEIterableDataset(size = 100,
 
 model_builder = build_logdeeponet
 optimizer = torch.optim.Adam
-loss_fn = RobertsonPhysicsLoss(k1, k2, k3, y_scale, lambda_data=1.0, lambda_cons=1.0, lambda_ode=1e-2).to(device)
+loss_fn = rob_loss(k1, k2, k3, y_scale, lambda_data=1.0, lambda_cons=1.0, lambda_ode=1e-2).to(device)
 
 # ============================================================
 # Sweep 

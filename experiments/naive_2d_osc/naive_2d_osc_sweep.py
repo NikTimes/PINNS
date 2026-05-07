@@ -5,10 +5,10 @@
 import sys
 sys.path.insert(0, "../..")
 
-from src.models        import build_deeponet
-from src.data          import ODEIterableDataset, LatinHypercubeSampler
-from src.physics       import harm_osc
-from src.training      import Sweeper
+from pilot.models        import build_deeponet
+from pilot.data          import ODEIterableDataset, LatinHypercubeSampler
+from pilot.physics       import harm_osc
+from pilot.training      import Sweeper
 
 import torch 
 
