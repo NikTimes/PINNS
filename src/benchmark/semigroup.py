@@ -2,7 +2,7 @@ import torch
 import numpy as np
 
 
-def semigroup_data(model, ODEsolver, sampler, loss_fn, t_final, num_samples, num_boxes, out_mask, device):
+def semigroup_data(model, ODEsolver, sampler, loss_fn, t_final, num_samples, num_boxes, out_mask, device, method="RK45"):
     """
     For each time point in `times`, compute MSE for:
       - direct prediction:  G(y0, t)
@@ -15,7 +15,7 @@ def semigroup_data(model, ODEsolver, sampler, loss_fn, t_final, num_samples, num
     """
 
     # Initialize Data Arrays
-    loss_direct, loss_2step, loss_3step = [], [], []
+    loss_direct, loss_2step, loss_3step, sol_norms = [], [], [], []
     
     # Times to evaluate
     times = np.linspace(1, t_final, num_boxes)
@@ -29,14 +29,17 @@ def semigroup_data(model, ODEsolver, sampler, loss_fn, t_final, num_samples, num
         # For every final time collect num_samples of MSE data
         for t_val in times:
 
-            d1, d2, d3 = [], [], []
+            d1, d2, d3, norms = [], [], [], []
 
             for y in y0_samples:
                 
                 # Evaluate true solution
-                sol        = ODEsolver((0, t_val), y, t_eval=[t_val]).y[:, -1]
+                sol        = ODEsolver((0, t_val), y, t_eval=[t_val], method=method).y[:, -1]
                 sol        = sol[out_mask]
                 sol_tensor = torch.tensor(sol, dtype=torch.float32).to(device)
+
+                # Store the norms of the ground truth 
+                norms.append(torch.mean(sol_tensor ** 2).item())  
                 
                 # Initial condition input for model
                 y0_tensor  = torch.tensor(y, dtype=torch.float32).unsqueeze(0).to(device)
@@ -63,5 +66,6 @@ def semigroup_data(model, ODEsolver, sampler, loss_fn, t_final, num_samples, num
             loss_direct.append(d1)
             loss_2step.append(d2)
             loss_3step.append(d3)
+            sol_norms.append(norms)
 
-    return loss_direct, loss_2step, loss_3step
+    return loss_direct, loss_2step, loss_3step, sol_norms

@@ -1,4 +1,5 @@
 import numpy as np 
+import torch
 
 # ------------------------------------------------
 # Helper Training Functions
@@ -16,12 +17,17 @@ def train_one_epoch(model, loader, optimizer, loss_fn, device):
 
         inputs  = [x.to(device) for x in batch[:-1]]  # all but last = inputs
         targets = batch[-1].to(device)
-        
-        # Network forward Pass
-        pred = model(*inputs) # Unpack inputs
 
-        # Loss calculation
-        loss = loss_fn(pred, targets)
+        # Check if Physics Loss exists 
+        if hasattr(loss_fn, 'set_inputs'):
+            inputs[1].requires_grad_(True)  # Enable differentiation by t
+            pred = model(*inputs)             
+            loss_fn.set_inputs(inputs[0], inputs[1])
+            loss = loss_fn(pred, targets)
+        
+        else:
+            loss = loss_fn(pred, targets)
+
 
         # Optimizer Steps
         optimizer.zero_grad()
@@ -47,9 +53,16 @@ def validate(model, loader, loss_fn, device):
         # Network forward Pass
         pred = model(*inputs) # Unpack Inputs
 
-        # Loss calculation
-        loss = loss_fn(pred, targets)
-
+        # Check if Physics Loss exists 
+        if hasattr(loss_fn, 'set_inputs'):
+            inputs[1].requires_grad_(True)  # Enable differentiation by t
+            pred = model(*inputs)             
+            loss_fn.set_inputs(inputs[0], inputs[1])
+            loss = loss_fn(pred, targets)
+        
+        else:
+            loss = loss_fn(pred, targets)
+            
         # Calculate Loss terms 
         total_loss   += loss.item()
         steps        += 1

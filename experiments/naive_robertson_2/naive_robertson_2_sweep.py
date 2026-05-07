@@ -117,6 +117,6 @@ if __name__ == "__main__":
         sweep_config  = naive_robertson_2_sweep,
         loss_fn       = loss_fn,
         optimizer     = torch.optim.Adam,
-        project       = "robertson-2-sweep"
+        project       = "robertson-3-sweep"
     )
-    osc_sweeper.run(count=20)
+    osc_sweeper.run(count=10)
