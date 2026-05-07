@@ -78,7 +78,7 @@ pip install -e .
 Install pyenv:
 
 ```bash
-brew install pyenv
+brew install pyenv pyenv-virtualenv
 ```
 
 Install a Python version:
