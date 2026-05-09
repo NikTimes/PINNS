@@ -128,4 +128,4 @@ The configurations that yielded the best results after running `*_sweep.py` were
 
 Files named `*_benchmark.ipynb` contain full benchmarking workflows for evaluating the learned operator using PILOT and the saved weights in `/weights`. These notebooks are the recommended entry point for verifying that the codebase is functioning correctly. 
 
-Note, that in order to use the jupyter notebooks in an interface such as `spyder` you need to ensure that you have the required packages to support it. In the case of `spyder` you can follow how to use notebook instructions here: $\url{https://pypi.org/project/spyder-notebook/}$ 
+Note, that in order to use the jupyter notebooks in an interface such as `spyder` you need to ensure that you have the required packages to support it. In the case of `spyder` you can follow how to use notebook instructions here: https://pypi.org/project/spyder-notebook/
